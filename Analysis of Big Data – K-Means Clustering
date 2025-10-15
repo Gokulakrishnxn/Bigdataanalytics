@@ -1,0 +1,288 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy import stats
+import warnings
+warnings.filterwarnings('ignore')
+
+# Set style for better visualizations
+sns.set_style("whitegrid")
+plt.rcParams['figure.facecolor'] = 'white'
+
+# Create Titanic Dataset (simulated realistic data)
+np.random.seed(42)
+
+n_passengers = 891
+passenger_ids = range(1, n_passengers + 1)
+
+# Generate realistic Titanic data
+pclass = np.random.choice([1, 2, 3], n_passengers, p=[0.24, 0.21, 0.55])
+sex = np.random.choice(['male', 'female'], n_passengers, p=[0.65, 0.35])
+age = np.random.normal(29, 14, n_passengers)
+age = np.clip(age, 0.5, 80)
+age[np.random.choice(n_passengers, 177, replace=False)] = np.nan  # Missing ages
+
+sibsp = np.random.choice([0, 1, 2, 3, 4, 5], n_passengers, p=[0.68, 0.23, 0.05, 0.02, 0.01, 0.01])
+parch = np.random.choice([0, 1, 2, 3, 4, 5, 6], n_passengers, p=[0.76, 0.13, 0.08, 0.02, 0.005, 0.003, 0.002])
+
+# Fare based on class
+fare = np.zeros(n_passengers)
+fare[pclass == 1] = np.random.gamma(8, 10, sum(pclass == 1))
+fare[pclass == 2] = np.random.gamma(3, 5, sum(pclass == 2))
+fare[pclass == 3] = np.random.gamma(2, 4, sum(pclass == 3))
+
+embarked = np.random.choice(['S', 'C', 'Q'], n_passengers, p=[0.72, 0.19, 0.09])
+
+# Survival based on realistic factors
+survival_prob = np.zeros(n_passengers)
+survival_prob += (sex == 'female') * 0.5
+survival_prob += (pclass == 1) * 0.3
+survival_prob += (pclass == 2) * 0.15
+survival_prob -= (pclass == 3) * 0.1
+survival_prob += (age < 15) * 0.2
+survival_prob += (sibsp + parch > 0) * 0.05
+survival_prob = np.clip(survival_prob, 0, 1)
+survived = (np.random.random(n_passengers) < survival_prob).astype(int)
+
+df = pd.DataFrame({
+    'PassengerId': passenger_ids,
+    'Survived': survived,
+    'Pclass': pclass,
+    'Sex': sex,
+    'Age': age,
+    'SibSp': sibsp,
+    'Parch': parch,
+    'Fare': fare,
+    'Embarked': embarked
+})
+
+print("=" * 90)
+print("COMPREHENSIVE DATA VISUALIZATION TECHNIQUES - TITANIC DATASET ANALYSIS")
+print("=" * 90)
+
+# Dataset Overview
+print("\n1. DATASET OVERVIEW")
+print("-" * 90)
+print(f"Total Passengers: {len(df)}")
+print(f"Total Features: {df.shape[1]}")
+print(f"Survival Rate: {df['Survived'].mean()*100:.2f}%")
+print(f"Missing Age Values: {df['Age'].isna().sum()}")
+print("\nFirst 5 Records:")
+print(df.head().to_string())
+
+print("\n2. STATISTICAL SUMMARY")
+print("-" * 90)
+print(df.describe().to_string())
+
+# Create comprehensive visualizations
+fig = plt.figure(figsize=(20, 24))
+
+# ==================== 1. LINE PLOT ====================
+ax1 = plt.subplot(5, 3, 1)
+age_survival = df.groupby(pd.cut(df['Age'], bins=10))['Survived'].mean()
+age_bins_mid = [interval.mid for interval in age_survival.index]
+ax1.plot(age_bins_mid, age_survival.values, marker='o', linewidth=2, markersize=8, color='darkblue')
+ax1.set_title('1. LINE PLOT: Survival Rate by Age Group', fontsize=11, fontweight='bold')
+ax1.set_xlabel('Age', fontsize=9)
+ax1.set_ylabel('Survival Rate', fontsize=9)
+ax1.grid(True, alpha=0.3)
+
+print("\n3. LINE PLOT ANALYSIS")
+print("-" * 90)
+print("Age Group Survival Rates:")
+for age_bin, surv_rate in zip(age_survival.index, age_survival.values):
+    print(f"  {age_bin}: {surv_rate*100:.2f}%")
+
+# ==================== 2. BAR CHART (VERTICAL) ====================
+ax2 = plt.subplot(5, 3, 2)
+class_survival = df.groupby('Pclass')['Survived'].mean()
+bars = ax2.bar(class_survival.index, class_survival.values, color=['gold', 'silver', 'brown'], 
+               edgecolor='black', linewidth=1.5)
+ax2.set_title('2. BAR CHART: Survival Rate by Passenger Class', fontsize=11, fontweight='bold')
+ax2.set_xlabel('Passenger Class', fontsize=9)
+ax2.set_ylabel('Survival Rate', fontsize=9)
+ax2.set_xticks([1, 2, 3])
+for bar in bars:
+    height = bar.get_height()
+    ax2.text(bar.get_x() + bar.get_width()/2., height,
+             f'{height:.2%}', ha='center', va='bottom', fontsize=9)
+ax2.grid(axis='y', alpha=0.3)
+
+print("\n4. BAR CHART ANALYSIS")
+print("-" * 90)
+print("Survival Rate by Class:")
+for pclass, rate in class_survival.items():
+    print(f"  Class {pclass}: {rate*100:.2f}%")
+
+# ==================== 3. HORIZONTAL BAR CHART ====================
+ax3 = plt.subplot(5, 3, 3)
+embark_counts = df['Embarked'].value_counts().sort_values()
+ax3.barh(embark_counts.index, embark_counts.values, color='teal', edgecolor='black')
+ax3.set_title('3. HORIZONTAL BAR: Passengers by Embarkation Port', fontsize=11, fontweight='bold')
+ax3.set_xlabel('Number of Passengers', fontsize=9)
+ax3.set_ylabel('Port', fontsize=9)
+for i, v in enumerate(embark_counts.values):
+    ax3.text(v, i, f' {v}', va='center', fontsize=9)
+ax3.grid(axis='x', alpha=0.3)
+
+# ==================== 4. HISTOGRAM ====================
+ax4 = plt.subplot(5, 3, 4)
+ax4.hist(df['Age'].dropna(), bins=20, color='skyblue', edgecolor='black', alpha=0.7)
+ax4.axvline(df['Age'].mean(), color='red', linestyle='--', linewidth=2, label=f'Mean: {df["Age"].mean():.1f}')
+ax4.axvline(df['Age'].median(), color='green', linestyle='--', linewidth=2, label=f'Median: {df["Age"].median():.1f}')
+ax4.set_title('4. HISTOGRAM: Age Distribution', fontsize=11, fontweight='bold')
+ax4.set_xlabel('Age', fontsize=9)
+ax4.set_ylabel('Frequency', fontsize=9)
+ax4.legend(fontsize=8)
+ax4.grid(axis='y', alpha=0.3)
+
+# ==================== 5. SCATTER PLOT ====================
+ax5 = plt.subplot(5, 3, 5)
+colors = ['red' if s == 0 else 'green' for s in df['Survived']]
+ax5.scatter(df['Age'], df['Fare'], c=colors, alpha=0.5, s=30)
+ax5.set_title('5. SCATTER PLOT: Age vs Fare (Survival)', fontsize=11, fontweight='bold')
+ax5.set_xlabel('Age', fontsize=9)
+ax5.set_ylabel('Fare', fontsize=9)
+ax5.legend(['Not Survived', 'Survived'], fontsize=8)
+ax5.grid(True, alpha=0.3)
+
+# ==================== 6. BOX PLOT ====================
+ax6 = plt.subplot(5, 3, 6)
+df.boxplot(column='Age', by='Pclass', ax=ax6)
+ax6.set_title('6. BOX PLOT: Age Distribution by Class', fontsize=11, fontweight='bold')
+ax6.set_xlabel('Passenger Class', fontsize=9)
+ax6.set_ylabel('Age', fontsize=9)
+plt.sca(ax6)
+plt.xticks([1, 2, 3])
+ax6.get_figure().suptitle('')
+
+print("\n5. BOX PLOT STATISTICS")
+print("-" * 90)
+for pclass in [1, 2, 3]:
+    class_ages = df[df['Pclass'] == pclass]['Age'].dropna()
+    print(f"Class {pclass}: Q1={class_ages.quantile(0.25):.1f}, Median={class_ages.median():.1f}, Q3={class_ages.quantile(0.75):.1f}")
+
+# ==================== 7. VIOLIN PLOT ====================
+ax7 = plt.subplot(5, 3, 7)
+sns.violinplot(data=df, x='Pclass', y='Fare', ax=ax7, palette='Set2')
+ax7.set_title('7. VIOLIN PLOT: Fare Distribution by Class', fontsize=11, fontweight='bold')
+ax7.set_xlabel('Passenger Class', fontsize=9)
+ax7.set_ylabel('Fare', fontsize=9)
+
+# ==================== 8. PIE CHART ====================
+ax8 = plt.subplot(5, 3, 8)
+survival_counts = df['Survived'].value_counts()
+colors_pie = ['#ff9999', '#66b3ff']
+explode = (0.1, 0)
+ax8.pie(survival_counts.values, labels=['Not Survived', 'Survived'], autopct='%1.1f%%',
+        startangle=90, colors=colors_pie, explode=explode, shadow=True)
+ax8.set_title('8. PIE CHART: Overall Survival Distribution', fontsize=11, fontweight='bold')
+
+# ==================== 9. STACKED BAR CHART ====================
+ax9 = plt.subplot(5, 3, 9)
+survival_by_class = pd.crosstab(df['Pclass'], df['Survived'])
+survival_by_class.plot(kind='bar', stacked=True, ax=ax9, color=['#ff9999', '#66b3ff'])
+ax9.set_title('9. STACKED BAR: Survival by Class', fontsize=11, fontweight='bold')
+ax9.set_xlabel('Passenger Class', fontsize=9)
+ax9.set_ylabel('Count', fontsize=9)
+ax9.legend(['Not Survived', 'Survived'], fontsize=8)
+ax9.set_xticklabels([1, 2, 3], rotation=0)
+ax9.grid(axis='y', alpha=0.3)
+
+# ==================== 10. GROUPED BAR CHART ====================
+ax10 = plt.subplot(5, 3, 10)
+survival_sex_class = df.groupby(['Pclass', 'Sex'])['Survived'].mean().unstack()
+survival_sex_class.plot(kind='bar', ax=ax10, color=['lightcoral', 'lightblue'])
+ax10.set_title('10. GROUPED BAR: Survival Rate by Class & Gender', fontsize=11, fontweight='bold')
+ax10.set_xlabel('Passenger Class', fontsize=9)
+ax10.set_ylabel('Survival Rate', fontsize=9)
+ax10.legend(['Female', 'Male'], fontsize=8)
+ax10.set_xticklabels([1, 2, 3], rotation=0)
+ax10.grid(axis='y', alpha=0.3)
+
+# ==================== 11. HEATMAP ====================
+ax11 = plt.subplot(5, 3, 11)
+correlation_data = df[['Survived', 'Pclass', 'Age', 'SibSp', 'Parch', 'Fare']].corr()
+sns.heatmap(correlation_data, annot=True, fmt='.2f', cmap='coolwarm', center=0, 
+            ax=ax11, square=True, linewidths=1, cbar_kws={"shrink": 0.8})
+ax11.set_title('11. HEATMAP: Feature Correlation Matrix', fontsize=11, fontweight='bold')
+
+print("\n6. CORRELATION ANALYSIS")
+print("-" * 90)
+print("Correlation with Survival:")
+print(correlation_data['Survived'].sort_values(ascending=False).to_string())
+
+# ==================== 12. AREA PLOT ====================
+ax12 = plt.subplot(5, 3, 12)
+age_bins = pd.cut(df['Age'], bins=8)
+survival_by_age = df.groupby([age_bins, 'Survived']).size().unstack(fill_value=0)
+survival_by_age.plot.area(ax=ax12, alpha=0.7, color=['#ff9999', '#66b3ff'])
+ax12.set_title('12. AREA PLOT: Survival Count by Age Range', fontsize=11, fontweight='bold')
+ax12.set_xlabel('Age Range', fontsize=9)
+ax12.set_ylabel('Count', fontsize=9)
+ax12.legend(['Not Survived', 'Survived'], fontsize=8)
+ax12.grid(True, alpha=0.3)
+
+# ==================== 13. DENSITY PLOT ====================
+ax13 = plt.subplot(5, 3, 13)
+df[df['Survived'] == 0]['Age'].dropna().plot.density(ax=ax13, color='red', linewidth=2, label='Not Survived')
+df[df['Survived'] == 1]['Age'].dropna().plot.density(ax=ax13, color='green', linewidth=2, label='Survived')
+ax13.set_title('13. DENSITY PLOT: Age Distribution by Survival', fontsize=11, fontweight='bold')
+ax13.set_xlabel('Age', fontsize=9)
+ax13.set_ylabel('Density', fontsize=9)
+ax13.legend(fontsize=8)
+ax13.grid(True, alpha=0.3)
+
+# ==================== 14. COUNT PLOT ====================
+ax14 = plt.subplot(5, 3, 14)
+sns.countplot(data=df, x='Pclass', hue='Sex', ax=ax14, palette='Set1')
+ax14.set_title('14. COUNT PLOT: Passenger Distribution', fontsize=11, fontweight='bold')
+ax14.set_xlabel('Passenger Class', fontsize=9)
+ax14.set_ylabel('Count', fontsize=9)
+ax14.legend(title='Gender', fontsize=8)
+ax14.grid(axis='y', alpha=0.3)
+
+# ==================== 15. SWARM PLOT ====================
+ax15 = plt.subplot(5, 3, 15)
+sample_df = df.sample(n=200, random_state=42)  # Sample for visibility
+sns.swarmplot(data=sample_df, x='Pclass', y='Age', hue='Survived', ax=ax15, palette='Set1', size=3)
+ax15.set_title('15. SWARM PLOT: Age Distribution (Sample)', fontsize=11, fontweight='bold')
+ax15.set_xlabel('Passenger Class', fontsize=9)
+ax15.set_ylabel('Age', fontsize=9)
+ax15.legend(['Not Survived', 'Survived'], fontsize=8)
+
+plt.tight_layout()
+plt.savefig('comprehensive_visualization_analysis.png', dpi=300, bbox_inches='tight')
+plt.show()
+
+# Additional Analysis
+print("\n7. SURVIVAL ANALYSIS BY GENDER")
+print("-" * 90)
+gender_survival = df.groupby('Sex')['Survived'].agg(['count', 'sum', 'mean'])
+gender_survival.columns = ['Total', 'Survived_Count', 'Survival_Rate']
+print(gender_survival.to_string())
+
+print("\n8. FAMILY SIZE ANALYSIS")
+print("-" * 90)
+df['FamilySize'] = df['SibSp'] + df['Parch'] + 1
+df['IsAlone'] = (df['FamilySize'] == 1).astype(int)
+family_survival = df.groupby('IsAlone')['Survived'].mean()
+print(f"Survival Rate - Traveling Alone: {family_survival[1]*100:.2f}%")
+print(f"Survival Rate - With Family: {family_survival[0]*100:.2f}%")
+
+print("\n9. FARE STATISTICS BY CLASS")
+print("-" * 90)
+fare_stats = df.groupby('Pclass')['Fare'].agg(['mean', 'median', 'std', 'min', 'max'])
+print(fare_stats.to_string())
+
+print("\n" + "=" * 90)
+print("VISUALIZATION ANALYSIS COMPLETE")
+print("=" * 90)
+print("\nAll plots saved as 'comprehensive_visualization_analysis.png'")
+print("\nPlot Types Demonstrated:")
+print("  1. Line Plot       2. Bar Chart (Vertical)    3. Horizontal Bar")
+print("  4. Histogram       5. Scatter Plot            6. Box Plot")
+print("  7. Violin Plot     8. Pie Chart               9. Stacked Bar")
+print(" 10. Grouped Bar    11. Heatmap                12. Area Plot")
+print(" 13. Density Plot   14. Count Plot             15. Swarm Plot")
