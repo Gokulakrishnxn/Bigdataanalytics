@@ -1,0 +1,157 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+import random
+
+# Set random seeds for reproducibility
+np.random.seed(42)
+random.seed(42)
+
+# Load Iris Dataset (simulated - replace with actual CSV loading)
+from sklearn.datasets import load_iris
+iris = load_iris()
+df = pd.DataFrame(iris.data, columns=iris.feature_names)
+df['species'] = iris.target
+df['species'] = df['species'].map({0: 'setosa', 1: 'versicolor', 2: 'virginica'})
+
+print("=" * 70)
+print("RANDOM NUMBER GENERATION ANALYSIS - IRIS DATASET")
+print("=" * 70)
+
+# 1. UNIFORM RANDOM SAMPLING
+print("\n1. UNIFORM RANDOM SAMPLING")
+print("-" * 70)
+uniform_sample = df.sample(n=30, random_state=42)
+print(f"Original dataset size: {len(df)}")
+print(f"Uniform random sample size: {len(uniform_sample)}")
+print(f"\nSpecies distribution in uniform sample:")
+print(uniform_sample['species'].value_counts())
+
+# 2. STRATIFIED RANDOM SAMPLING
+print("\n2. STRATIFIED RANDOM SAMPLING")
+print("-" * 70)
+stratified_sample = df.groupby('species', group_keys=False).apply(
+    lambda x: x.sample(n=10, random_state=42)
+)
+print(f"Stratified sample size: {len(stratified_sample)}")
+print(f"\nSpecies distribution in stratified sample:")
+print(stratified_sample['species'].value_counts())
+
+# 3. RANDOM NUMBER GENERATION - Different Distributions
+print("\n3. RANDOM NUMBER GENERATION - VARIOUS DISTRIBUTIONS")
+print("-" * 70)
+
+# Generate random numbers from different distributions
+n_samples = 1000
+uniform_rng = np.random.uniform(0, 1, n_samples)
+normal_rng = np.random.normal(0, 1, n_samples)
+exponential_rng = np.random.exponential(1, n_samples)
+binomial_rng = np.random.binomial(10, 0.5, n_samples)
+
+print(f"Uniform Distribution - Mean: {uniform_rng.mean():.4f}, Std: {uniform_rng.std():.4f}")
+print(f"Normal Distribution - Mean: {normal_rng.mean():.4f}, Std: {normal_rng.std():.4f}")
+print(f"Exponential Distribution - Mean: {exponential_rng.mean():.4f}, Std: {exponential_rng.std():.4f}")
+print(f"Binomial Distribution - Mean: {binomial_rng.mean():.4f}, Std: {binomial_rng.std():.4f}")
+
+# 4. BOOTSTRAP SAMPLING
+print("\n4. BOOTSTRAP SAMPLING (WITH REPLACEMENT)")
+print("-" * 70)
+bootstrap_sample = df.sample(n=150, replace=True, random_state=42)
+print(f"Bootstrap sample size: {len(bootstrap_sample)}")
+print(f"Unique samples in bootstrap: {len(bootstrap_sample.drop_duplicates())}")
+print(f"\nSpecies distribution in bootstrap sample:")
+print(bootstrap_sample['species'].value_counts())
+
+# 5. RANDOM TRAIN-TEST SPLIT
+print("\n5. RANDOM TRAIN-TEST SPLIT")
+print("-" * 70)
+X = df.drop('species', axis=1)
+y = df['species']
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.3, random_state=42, stratify=y
+)
+print(f"Training set size: {len(X_train)}")
+print(f"Testing set size: {len(X_test)}")
+print(f"\nTraining set species distribution:")
+print(y_train.value_counts())
+print(f"\nTesting set species distribution:")
+print(y_test.value_counts())
+
+# 6. RANDOM FEATURE SELECTION
+print("\n6. RANDOM FEATURE SELECTION")
+print("-" * 70)
+all_features = df.columns[:-1].tolist()
+random_features = random.sample(all_features, 2)
+print(f"All features: {all_features}")
+print(f"Randomly selected features: {random_features}")
+
+# 7. STATISTICAL ANALYSIS OF RNG
+print("\n7. RANDOM NUMBER GENERATOR COMPARISON")
+print("-" * 70)
+rng_comparison = pd.DataFrame({
+    'Uniform': uniform_rng[:100],
+    'Normal': normal_rng[:100],
+    'Exponential': exponential_rng[:100]
+})
+print(rng_comparison.describe())
+
+# Create visualizations
+fig, axes = plt.subplots(2, 3, figsize=(15, 10))
+fig.suptitle('Random Number Generation Analysis', fontsize=16, fontweight='bold')
+
+# Plot 1: Original vs Uniform Sample
+axes[0, 0].bar(df['species'].value_counts().index, df['species'].value_counts().values, 
+               alpha=0.7, label='Original', color='blue')
+axes[0, 0].bar(uniform_sample['species'].value_counts().index, 
+               uniform_sample['species'].value_counts().values, 
+               alpha=0.7, label='Uniform Sample', color='orange')
+axes[0, 0].set_title('Original vs Uniform Random Sample')
+axes[0, 0].set_ylabel('Count')
+axes[0, 0].legend()
+axes[0, 0].grid(axis='y', alpha=0.3)
+
+# Plot 2: Stratified Sample
+axes[0, 1].bar(stratified_sample['species'].value_counts().index, 
+               stratified_sample['species'].value_counts().values, color='green')
+axes[0, 1].set_title('Stratified Random Sample')
+axes[0, 1].set_ylabel('Count')
+axes[0, 1].grid(axis='y', alpha=0.3)
+
+# Plot 3: Bootstrap Sample
+axes[0, 2].bar(bootstrap_sample['species'].value_counts().index, 
+               bootstrap_sample['species'].value_counts().values, color='red')
+axes[0, 2].set_title('Bootstrap Sample (With Replacement)')
+axes[0, 2].set_ylabel('Count')
+axes[0, 2].grid(axis='y', alpha=0.3)
+
+# Plot 4: Uniform Distribution
+axes[1, 0].hist(uniform_rng, bins=30, edgecolor='black', alpha=0.7, color='blue')
+axes[1, 0].set_title('Uniform Distribution')
+axes[1, 0].set_xlabel('Value')
+axes[1, 0].set_ylabel('Frequency')
+axes[1, 0].grid(axis='y', alpha=0.3)
+
+# Plot 5: Normal Distribution
+axes[1, 1].hist(normal_rng, bins=30, edgecolor='black', alpha=0.7, color='green')
+axes[1, 1].set_title('Normal Distribution')
+axes[1, 1].set_xlabel('Value')
+axes[1, 1].set_ylabel('Frequency')
+axes[1, 1].grid(axis='y', alpha=0.3)
+
+# Plot 6: Exponential Distribution
+axes[1, 2].hist(exponential_rng, bins=30, edgecolor='black', alpha=0.7, color='red')
+axes[1, 2].set_title('Exponential Distribution')
+axes[1, 2].set_xlabel('Value')
+axes[1, 2].set_ylabel('Frequency')
+axes[1, 2].grid(axis='y', alpha=0.3)
+
+plt.tight_layout()
+plt.savefig('rng_analysis_output.png', dpi=300, bbox_inches='tight')
+plt.show()
+
+print("\n" + "=" * 70)
+print("ANALYSIS COMPLETE")
+print("=" * 70)
+print("\nVisualization saved as 'rng_analysis_output.png'")
